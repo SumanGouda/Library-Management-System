@@ -2,445 +2,460 @@ import streamlit as st
 import requests
 import json
 import pandas as pd
-from typing import List, Dict, Any, Optional 
+from typing import Dict, Any, Optional
 from datetime import date
 import pathlib
 import time
 
-# --- Configuration ---
-FASTAPI_BASE_URL = "http://127.0.0.1:8000" 
+# ─────────────────────────────────────────────
+# CONFIGURATION
+# ─────────────────────────────────────────────
+FASTAPI_BASE_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(
     page_title="Book Management System",
-    layout="wide"
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
-if 'view_db' not in st.session_state:
-    st.session_state.view_db = False
 
-st.title("📚 Book Management System")
+# ─────────────────────────────────────────────
+# LOAD EXTERNAL CSS
+# ─────────────────────────────────────────────
+def load_css(file_name: str):
+    css_path = pathlib.Path(file_name)
+    if css_path.exists():
+        with open(css_path) as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    else:
+        st.warning(f"⚠️ CSS file '{file_name}' not found. Make sure style.css is in the same folder as streamlit_app.py.")
 
-# Function to load local CSS
-def local_css(file_name):
-    with open(file_name) as f:
-        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+load_css("style.css")
 
-# Load the External CSS
-css_path = pathlib.Path("style.css") 
-local_css(css_path)
+# ─────────────────────────────────────────────
+# SESSION STATE
+# ─────────────────────────────────────────────
+for key, default in {
+    "view_db": False,
+    "fetched_book_data": None,
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = default
 
-# --- HELPER FUNCTION: To handle successful API calls ---
-def handle_success(message):
-    st.session_state.success_message = message
+# ─────────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────────
+def api(method: str, path: str, **kwargs):
+    """Thin wrapper around requests; returns (response | None, error_str | None)."""
+    try:
+        resp = getattr(requests, method)(f"{FASTAPI_BASE_URL}{path}", timeout=8, **kwargs)
+        return resp, None
+    except requests.exceptions.ConnectionError:
+        return None, "🚨 Cannot reach the FastAPI server. Is it running?"
+    except Exception as e:
+        return None, str(e)
+
+def show_error(response, fallback="An unknown error occurred."):
+    try:
+        detail = response.json().get("detail", fallback)
+    except Exception:
+        detail = fallback
+    st.error(f"Error {response.status_code}: {detail}")
+
+def success_and_rerun(msg: str):
     st.cache_data.clear()
-    st.success(message)
-    time.sleep(1)
+    st.success(msg)
+    time.sleep(0.8)
     st.rerun()
 
-# --- HELPER FUNCTION: To handle API errors ---
-def handle_error(response, default_message="An unknown error occurred."):
-    try:
-        error_detail = response.json().get("detail", default_message)
-        st.error(f"API Error ({response.status_code}): {error_detail}")
-    except json.JSONDecodeError:
-        st.error(f"API Error ({response.status_code}): Failed to decode error message.")
-
-# --- Helper Function for Displaying All Books ---
-@st.cache_data(ttl=5) # Cache data for 5 seconds to reduce API calls
+@st.cache_data(ttl=6)
 def fetch_all_books() -> pd.DataFrame:
-    """Fetches all book records from the FastAPI /books/ endpoint."""
-    try:
-        response = requests.get(f"{FASTAPI_BASE_URL}/books/")
-        if response.status_code == 200:
-            return pd.DataFrame(response.json())
-        elif response.status_code == 404:
-            st.info("Local database is empty.")
-        else:
-            st.error(f"Error fetching all books: Status {response.status_code}")
+    resp, err = api("get", "/books/")
+    if err:
+        st.error(err)
         return pd.DataFrame()
-    except requests.exceptions.ConnectionError:
-        st.error("🚨 Connection Error: Is the FastAPI server running?")
+    if resp.status_code == 200:
+        data = resp.json()
+        return pd.DataFrame(data) if data else pd.DataFrame()
+    return pd.DataFrame()
+
+@st.cache_data(ttl=6)
+def fetch_overdue() -> pd.DataFrame:
+    resp, err = api("get", "/loans/overdue/")
+    if err:
         return pd.DataFrame()
+    if resp.status_code == 200:
+        data = resp.json()
+        return pd.DataFrame(data) if data else pd.DataFrame()
+    return pd.DataFrame()
 
-# --- Session State Management ---
-if 'fetched_book_data' not in st.session_state:
-    st.session_state.fetched_book_data: Optional[Dict[str, Any]] = None
+# ─────────────────────────────────────────────
+# HEADER
+# ─────────────────────────────────────────────
+st.markdown("""
+<div class="bms-header">
+    <h1>📚 Book Management System</h1>
+    <p>Library Operations Dashboard</p>
+</div>
+""", unsafe_allow_html=True)
 
-if not st.session_state.view_db:
-    # --- UI Layout ---
-    col1, col2, col3 = st.columns([1.5, 2, 1])
-
-    # 🚀 COLUMN 1: ISBN LOOKUP AND SAVE FEATURE
-    with col1:
-        st.subheader("🔍 Add Or Remove Book")
-        # --- STEP 1: ISBN Search ---
-        search_isbn = st.text_input("Enter ISBN (10 or 13 digits)", key="isbn_search_input")
-        cleaned_isbn = search_isbn.replace("-", "").replace(" ", "")
-        
-        col_submit, col_clear = st.columns([1, 1])
-        with col_submit:
-            if st.button("", key="submit"):
-                if search_isbn:
-                    st.session_state.fetched_book_data = None 
-                    with st.spinner("⏳ Contacting API..."):
-                        try:
-                            # Call the FastAPI ISBN search endpoint
-                            response = requests.get(f"{FASTAPI_BASE_URL}/search-isbn/{cleaned_isbn}")
-                            
-                            if response.status_code == 200:
-                                book_data = response.json()
-                                st.session_state.fetched_book_data = book_data 
-                                st.success("✅ Book details fetched successfully! Review and Save below.")
-                            else:
-                                handle_error(response, default_message="Could not fetch book details.")
-                                
-                        except requests.exceptions.ConnectionError:
-                            st.error("🚨 Connection Error: Is the FastAPI server running?")
-                else:
-                    st.warning("Please enter an ISBN to search.")
-        
-        with col_clear:
-            if st.button("", key="clear"):
-                if search_isbn:
-                    st.session_state.fetched_book_data = None
-                    with st.spinner("⏳ Contacting API to remove book..."):
-                        try:
-                            response = requests.delete(f"{FASTAPI_BASE_URL}/books/{cleaned_isbn}")
-                            if response.status_code == 200:
-                                handle_success(f"✅ Book with ISBN {cleaned_isbn} removed successfully!")
-                            else:
-                                handle_error(response, default_message="Could not remove book.")
-                        except requests.exceptions.ConnectionError:
-                            st.error("🚨 Connection Error: Is the FastAPI server running?")
-        
-        # --- STEP 2: Review and Save ---
-        if st.session_state.fetched_book_data:
-            data = st.session_state.fetched_book_data
-            st.subheader("Review & Save")
-            
-            # Display the fetched data for review/editing
-            final_title = st.text_input("Title", value=data.get('title', 'N/A'))
-            final_author = st.text_input("Author", value=data.get('author', 'N/A'))
-            final_pages = st.number_input("Pages", value=int(data.get('pages', 1)), min_value=1)
-            final_genre = st.text_input("Genre", value=data.get('genre', 'General'))
-            
-            # The ISBN, status, and availability are typically hidden or set by the API/system
-            isbn_display = data.get('isbn', 'N/A')
-            st.caption(f"ISBN: **{isbn_display}**")
-            
-            # Save Button
-            if st.button(
-                    "SAVE BOOK TO DATABASE",
-                    key="save_button"
-                ):
-                # 1. Prepare the final payload (must match your FastAPI Book model)
-                book_to_save = {
-                    "title": final_title,
-                    "author": final_author,
-                    "pages": int(final_pages),
-                    "available": True, 
-                    "isbn": isbn_display,
-                    "genre": final_genre 
-                }
-                try:
-                    # 2. Send the POST request to the saving endpoint
-                    response = requests.post(f"{FASTAPI_BASE_URL}/books/", json=book_to_save)
-                    
-                    # 3. Handle response and clear state
-                    if response.status_code == 201:
-                        # Use helper function for success and UI refresh
-                        st.session_state.fetched_book_data = None # Clear state for new entry
-                        handle_success(f"✅ Book '{final_title}' saved successfully!")
-                    else:
-                        # Use helper function for API error response
-                        handle_error(response, default_message="Failed to save book.")
-                
-                except requests.exceptions.ConnectionError:
-                    st.error("🚨 Connection Error: Cannot connect to the FastAPI server.")
-            
-    # Column 2: Borrower History
-    with col2:
-        # --- LOAN & RETURN ---
-        st.subheader("🔄 Loan & Status Update")
-        coustomer_id = st.text_input("Coustomer ID", key="customer_id_input_final")
-        loan_isbn = st.text_input("Enter ISBN to Issue or Return", key="loan_isbn_input_final")
-        col_issue, col_return = st.columns([1, 1]) 
-
-        with col_issue:
-            # --- ACTION BUTTON: This button now acts as the final 'Submit' ---
-            if st.button("ISSUE BOOK", key="button-77"):
-                if loan_isbn and coustomer_id:
-                    cleaned_loan_isbn = loan_isbn.replace("-", "").replace(" ", "")
-                    # 1. Safely convert to integer
-                    try:
-                        coustomer_id_int = int(coustomer_id)
-                    except ValueError:
-                        st.error("Customer ID must be a valid whole number (integer).")
-                        st.stop() # Prevents the code from continuing with an empty ID
-
-                    # 2. Build payload
-                    payload = {
-                        "isbn": cleaned_loan_isbn,
-                        "coustomer_id": coustomer_id_int, 
-                        "issue_date": date.today().isoformat()
-                    }
-                    # 3. API Call
-                    with st.spinner("Processing Issue..."):
-                        try:
-                            response = requests.post(
-                                f"{FASTAPI_BASE_URL}/loans/",
-                                json=payload
-                            )
-                            if response.status_code == 201:
-                                # Clear inputs
-                                if 'loan_isbn_input_final' in st.session_state:
-                                    del st.session_state.loan_isbn_input_final
-                                if 'customer_id_input_final' in st.session_state:
-                                    del st.session_state.customer_id_input_final
-                                
-                                handle_success(f"✅ Success! ISBN {cleaned_loan_isbn} has been issued to Customer {coustomer_id_int}.")
-                            else:
-                                handle_error(response, "Failed to issue book.")
-
-                        except requests.exceptions.ConnectionError:
-                            st.error("Connection Error: Ensure your FastAPI backend server is running.")
-
-                else:
-                    if not loan_isbn:
-                        st.warning("Please enter the **ISBN**.")
-                    elif not coustomer_id:
-                        st.warning("Please enter the **Customer ID**.")
-                        
-        with col_return:
-            if st.button("RETURN BOOK", key="button-78"):
-                if loan_isbn and coustomer_id:
-                    cleaned_loan_isbn = loan_isbn.replace("-", "").replace(" ", "")
-                    # Build the payload to match the ReturnRequest Pydantic model
-                    try:
-                        coustomer_id_int = int(coustomer_id)
-                    except ValueError:
-                        st.error("Customer ID must be a valid number.")
-
-                    payload = {
-                        "isbn": cleaned_loan_isbn,
-                        "coustomer_id": coustomer_id_int,
-                    }
-                    # --- FastAPI Endpoint Call for RETURN ---
-                    try:
-                        response = requests.post(
-                            f"{FASTAPI_BASE_URL}/loans/return/",
-                            json=payload
-                        )
-                        if response.status_code == 200:
-                            handle_success(f"ISBN {cleaned_loan_isbn} *returned* and marked available. Status updated.")
-                        else:
-                            handle_error(response, "Failed to return book.")
-                            
-                    except requests.exceptions.ConnectionError:
-                        st.error("Connection Error: Ensure your FastAPI backend server is running.")
-
-                else:
-                    if not loan_isbn:
-                        st.warning("Please enter the **ISBN** to return the book.")
-                    elif not coustomer_id:
-                        st.warning("Please enter the **Coustomer ID** before clicking the button.")
-        st.divider()
-        
-        # --- Borrower History ---
-        st.subheader("Borrower History")
-        coustomer_id = st.text_input("Customer ID", key="history_id_input")
-        
-        if st.button("VIEW HISTORY", key="borowwer"):
-            if coustomer_id:
-                coustomer_id_clean = coustomer_id.replace("-", "").replace(" ", "")
-                with st.spinner("Fetching borrower history..."):
-                    try:
-                        response = requests.get(f"{FASTAPI_BASE_URL}/loans/coustomer/{coustomer_id_clean}")
-                        if response.status_code == 200:
-                            history_data = response.json()
-                            if history_data:
-                                # --- CALCULATION LOGIC ---
-                                df = pd.DataFrame(history_data)
-
-                                # 1. Convert strings to Date objects
-                                df['due_date'] = pd.to_datetime(df['due_date']).dt.date
-                                today = date.today()
-
-                                # 2. Define a function to handle the "Days Left" text and logic
-                                def get_days_status(row):
-                                    if row['returned'] == True:
-                                        return "✅ RETURNED"
-                                    
-                                    days_diff = (row['due_date'] - today).days
-                                    if days_diff < 0:
-                                        return f"🚨 {abs(days_diff)} Days Overdue"
-                                    return f"{days_diff} Days Remaining"
-
-                                # Apply the status logic
-                                df['Days Status'] = df.apply(get_days_status, axis=1)
-
-                                # 3. Fine Algorithm (Only for non-returned books)
-                                def calc_fine(row):
-                                    if row['returned'] == True: 
-                                        return 0.0
-                                    
-                                    days_diff = (row['due_date'] - today).days
-                                    if days_diff >= 0: 
-                                        return 0.0
-                                    
-                                    fine_per_day = 5 
-                                    return abs(days_diff) * fine_per_day
-
-                                df['Fine (₹)'] = df.apply(calc_fine, axis=1)
-
-                                # 4. Styling for the Librarian
-                                def style_status(val):
-                                    if "✅ RETURNED" in str(val):
-                                        return 'color: green; font-weight: bold'
-                                    elif "🚨" in str(val):
-                                        return 'color: red; font-weight: bold'
-                                    return ''
-
-                                # 5. Final Display Table
-                                display_df = df.rename(columns={'isbn': 'ISBN'})
-                                cols_to_show = ['ISBN', 'Days Status', 'Fine (₹)']
-
-                                st.dataframe(
-                                    display_df[cols_to_show].style.applymap(style_status, subset=['Days Status']),
-                                    use_container_width=True
-                                )
-
-                                # Show summary total fine
-                                total_fine = df['Fine (₹)'].sum()
-                                if total_fine > 0:
-                                    st.error(f"🔴 Total Outstanding Fine: ₹{total_fine}")
-                                else:
-                                    st.success("🟢 No outstanding fines.")
-                                # --- END CALCULATION LOGIC ---
-                                
-                            else:
-                                st.info("No borrowing history found for this ID.")
-                        else:
-                            handle_error(response, "Could not fetch borrower history.")
-                    except requests.exceptions.ConnectionError:
-                        st.error("🚨 Connection Error: Is the FastAPI server running?")
-            else:
-                st.warning("Please enter a customer ID to view history.")
-        
-    # Column 3: Quick Actions
-    with col3:
-        st.subheader("👤 User Registration")
-        with st.expander("Register New Customer"):
-            with st.form("registration_form", clear_on_submit=True):
-                new_id = st.text_input("Assign Customer ID", placeholder="", help="")
-                new_name = st.text_input("Full Name", placeholder="")
-                new_email = st.text_input("Email Address", placeholder="")
-                new_phone = st.text_input("Phone Number", placeholder="")
-                
-                submit_user = st.form_submit_button("REGISTER USER", key="register_user_btn")
-                
-                if submit_user:
-                    if new_name and new_id:
-                        user_payload = {
-                            "coustomer_id": int(new_id),
-                            "name": new_name,
-                            "email_id": new_email if new_email else "N/A",
-                            "mobile_number": int(new_phone) if new_phone and str(new_phone).isdigit() else 0
-                        }
-                        try:
-                            response = requests.post(f"{FASTAPI_BASE_URL}/customers/", json=user_payload)
-                            if response.status_code == 201:
-                                st.success(f"✅ User {new_name} registered successfully!")
-                            else:
-                                handle_error(response, "Could not register user.")
-                        except requests.exceptions.ConnectionError:
-                            st.error("🚨 Backend server is not running!")
-                    else:
-                        st.warning("Please provide at least a Name and ID.")
-         
-        with st.expander("Delete Customer"):
-            with st.form("delete_form", clear_on_submit=True):
-
-                # 1️⃣ Raw input (ALWAYS string)
-                delete_id_raw = st.text_input(
-                    "Customer ID",
-                    placeholder="",
-                    help=""
-                )
-
-                # 2️⃣ Submit button
-                submit_delete = st.form_submit_button("DELETE USER")
-
-                # 3️⃣ Handle form submission
-                if submit_delete:
-
-                    # Debug: show raw input
-                    st.write("🧪 Debug → Raw Input:", repr(delete_id_raw))
-
-                    # Empty input check
-                    if not delete_id_raw.strip():
-                        st.warning("⚠️ Please enter a Customer ID.")
-                        st.stop()
-
-                    # Integer conversion check
-                    try:
-                        delete_id = int(delete_id_raw)
-                    except ValueError:
-                        st.error("❌ Customer ID must be a valid integer.")
-                        st.stop()
-
-                    # Debug: successful conversion
-                    st.write("🧪 Debug → Parsed Customer ID:", delete_id)
-
-                    # API call
-                    with st.spinner("Deleting customer..."):
-                        try:
-                            response = requests.delete(
-                                f"{FASTAPI_BASE_URL}/customers/{delete_id}"
-                            )
-
-                            # Debug: API response
-                            st.write("🧪 Debug → API Status Code:", response.status_code)
-
-                            if response.status_code == 200:
-                                st.success(f"✅ Customer {delete_id} deleted successfully!")
-                            else:
-                                handle_error(response, "Could not delete user.")
-
-                        except requests.exceptions.ConnectionError:
-                            st.error("🚨 Backend server is not running!")
-
-        st.subheader("Quick Actions")
-        if st.button("OPEN FULL DATABASE", key="open-db"):
-            st.session_state.view_db = True
-            st.rerun()
-        
-        # Show mini stats
-        df_books = fetch_all_books()
-        if not df_books.empty:
-            st.metric("Total Books", len(df_books))
-            st.metric("Available", df_books['available'].sum())
-
-else:
-    # --- DATABASE VIEW ---
+# ─────────────────────────────────────────────
+# DATABASE FULL VIEW
+# ─────────────────────────────────────────────
+if st.session_state.view_db:
     st.subheader("📊 Full Book Database")
-    
-    if st.button("Back to Management", key="open-db"):
+
+    if st.button("← Back to Dashboard", key="back_btn"):
         st.session_state.view_db = False
         st.rerun()
 
-    # Load and display the table
-    df_books = fetch_all_books()
-    if not df_books.empty:
-        # Add a search bar for the database
-        search = st.text_input("Filter by Title or Author")
+    df = fetch_all_books()
+    if not df.empty:
+        search = st.text_input("🔍 Filter by Title or Author", placeholder="Type to search...")
         if search:
-            df_books = df_books[df_books['title'].str.contains(search, case=False) | 
-                                df_books['author'].str.contains(search, case=False)]
-        
-        st.dataframe(df_books, use_container_width=True, height=500)
+            mask = (
+                df["title"].str.contains(search, case=False, na=False) |
+                df["author"].str.contains(search, case=False, na=False)
+            )
+            df = df[mask]
+        st.dataframe(df, use_container_width=True, height=520)
+        st.caption(f"{len(df)} record(s) shown")
     else:
         st.info("No books found in the database.")
+    st.stop()
 
+# ─────────────────────────────────────────────
+# MAIN DASHBOARD  ── 3 columns
+# ─────────────────────────────────────────────
+col1, col2, col3 = st.columns([1.5, 2, 1.1])
 
-## Next to add :
-    # Remove user based on there ID
+# ══════════════════════════════════════════════
+# COL 1 — Books (Add / Remove)
+# ══════════════════════════════════════════════
+with col1:
+    st.subheader("🔍 Add / Remove Book")
+
+    search_isbn = st.text_input("ISBN (10 or 13 digits)", key="isbn_input",
+                                placeholder="e.g. 9780141036144")
+    cleaned = search_isbn.strip().replace("-", "").replace(" ", "")
+
+    btn_col1, btn_col2 = st.columns(2)
+
+    with btn_col1:
+        if st.button("LOOKUP ISBN", key="btn_lookup"):
+            if not cleaned:
+                st.warning("Enter an ISBN first.")
+            else:
+                st.session_state.fetched_book_data = None
+                with st.spinner("Fetching from Google Books…"):
+                    resp, err = api("get", f"/search-isbn/{cleaned}")
+                if err:
+                    st.error(err)
+                elif resp.status_code == 200:
+                    st.session_state.fetched_book_data = resp.json()
+                    st.success("Book details fetched. Review below ↓")
+                else:
+                    show_error(resp, "Could not fetch book details.")
+
+    with btn_col2:
+        if st.button("REMOVE BOOK", key="btn_remove"):
+            if not cleaned:
+                st.warning("Enter an ISBN first.")
+            else:
+                st.session_state.fetched_book_data = None
+                with st.spinner("Removing…"):
+                    resp, err = api("delete", f"/books/{cleaned}")
+                if err:
+                    st.error(err)
+                elif resp.status_code == 200:
+                    success_and_rerun(f"Book {cleaned} removed.")
+                else:
+                    show_error(resp, "Could not remove book.")
+
+    # ── Review & Save panel ──
+    if st.session_state.fetched_book_data:
+        st.divider()
+        d = st.session_state.fetched_book_data
+        st.markdown("**Review & Save**")
+
+        final_title  = st.text_input("Title",  value=d.get("title", ""), key="rv_title")
+        final_author = st.text_input("Author", value=d.get("author", ""), key="rv_author")
+        final_pages  = st.number_input("Pages", value=int(d.get("pages", 1)),
+                                       min_value=1, key="rv_pages")
+        final_genre  = st.text_input("Genre",  value=d.get("genre", "General"), key="rv_genre")
+        st.caption(f"ISBN: **{d.get('isbn', '')}**")
+
+        if st.button("SAVE TO DATABASE", key="btn_save"):
+            payload = {
+                "title":     final_title,
+                "author":    final_author,
+                "pages":     int(final_pages),
+                "available": True,
+                "isbn":      d.get("isbn", ""),
+                "genre":     final_genre,
+            }
+            resp, err = api("post", "/books/", json=payload)
+            if err:
+                st.error(err)
+            elif resp.status_code == 201:
+                st.session_state.fetched_book_data = None
+                success_and_rerun(f"'{final_title}' saved successfully!")
+            else:
+                show_error(resp, "Failed to save book.")
+
+# ══════════════════════════════════════════════
+# COL 2 — Loans & Borrower History
+# ══════════════════════════════════════════════
+with col2:
+    tab_loan, tab_history, tab_overdue = st.tabs(["🔄 LOAN / RETURN", "📋 HISTORY", "⚠️ OVERDUE"])
+
+    # ── LOAN / RETURN ──
+    with tab_loan:
+        st.markdown("")
+        loan_cid   = st.text_input("Customer ID",  key="loan_cid",  placeholder="e.g. 1001")
+        loan_isbn  = st.text_input("Book ISBN",     key="loan_isbn", placeholder="e.g. 9780141036144")
+
+        c_issue, c_return = st.columns(2)
+
+        with c_issue:
+            if st.button("ISSUE BOOK", key="btn_issue"):
+                if not loan_isbn or not loan_cid:
+                    st.warning("Enter both Customer ID and ISBN.")
+                else:
+                    try:
+                        cid_int = int(loan_cid)
+                    except ValueError:
+                        st.error("Customer ID must be an integer.")
+                        st.stop()
+
+                    payload = {
+                        "isbn":          loan_isbn.strip().replace("-", "").replace(" ", ""),
+                        "coustomer_id":  cid_int,
+                        "issue_date":    date.today().isoformat(),
+                    }
+                    with st.spinner("Issuing book…"):
+                        resp, err = api("post", "/loans/", json=payload)
+                    if err:
+                        st.error(err)
+                    elif resp.status_code == 201:
+                        success_and_rerun(f"Book issued to Customer {cid_int}.")
+                    else:
+                        show_error(resp, "Failed to issue book.")
+
+        with c_return:
+            if st.button("RETURN BOOK", key="btn_return"):
+                if not loan_isbn or not loan_cid:
+                    st.warning("Enter both Customer ID and ISBN.")
+                else:
+                    try:
+                        cid_int = int(loan_cid)
+                    except ValueError:
+                        st.error("Customer ID must be an integer.")
+                        st.stop()
+
+                    payload = {
+                        "isbn":         loan_isbn.strip().replace("-", "").replace(" ", ""),
+                        "coustomer_id": cid_int,
+                    }
+                    with st.spinner("Returning book…"):
+                        resp, err = api("post", "/loans/return/", json=payload)
+                    if err:
+                        st.error(err)
+                    elif resp.status_code == 200:
+                        success_and_rerun("Book returned successfully.")
+                    else:
+                        show_error(resp, "Failed to return book.")
+
+    # ── BORROWER HISTORY ──
+    with tab_history:
+        st.markdown("")
+        hist_cid = st.text_input("Customer ID", key="hist_cid", placeholder="e.g. 1001")
+
+        if st.button("VIEW HISTORY", key="btn_history"):
+            if not hist_cid:
+                st.warning("Enter a Customer ID.")
+            else:
+                with st.spinner("Fetching history…"):
+                    resp, err = api("get", f"/loans/customer/{hist_cid.strip()}")
+
+                if err:
+                    st.error(err)
+                elif resp.status_code == 200:
+                    records = resp.json()
+                    if not records:
+                        st.info("No borrowing history found.")
+                    else:
+                        df = pd.DataFrame(records)
+                        df["due_date"] = pd.to_datetime(df["due_date"]).dt.date
+                        today = date.today()
+
+                        def days_status(row):
+                            if row["returned"]:
+                                return "✅ Returned"
+                            diff = (row["due_date"] - today).days
+                            return f"🚨 {abs(diff)}d overdue" if diff < 0 else f"{diff}d remaining"
+
+                        def calc_fine(row):
+                            if row["returned"]:
+                                return 0.0
+                            diff = (row["due_date"] - today).days
+                            return 0.0 if diff >= 0 else abs(diff) * 5.0
+
+                        df["Status"]   = df.apply(days_status, axis=1)
+                        df["Fine (₹)"] = df.apply(calc_fine, axis=1)
+
+                        display = df.rename(columns={"isbn": "ISBN"})[
+                            ["ISBN", "issue_date", "due_date", "Status", "Fine (₹)"]
+                        ]
+
+                        def style_status(val):
+                            if "Returned" in str(val):
+                                return "color:#4caf82; font-weight:600"
+                            if "overdue" in str(val):
+                                return "color:#cf6679; font-weight:600"
+                            return "color:#e8d5a3"
+
+                        st.dataframe(
+                            display.style.applymap(style_status, subset=["Status"]),
+                            use_container_width=True
+                        )
+
+                        total_fine = df["Fine (₹)"].sum()
+                        if total_fine > 0:
+                            st.error(f"Total Outstanding Fine: ₹{total_fine:.0f}")
+                        else:
+                            st.success("No outstanding fines.")
+                else:
+                    show_error(resp, "Could not fetch history.")
+
+    # ── OVERDUE LOANS ──
+    with tab_overdue:
+        st.markdown("")
+        if st.button("REFRESH OVERDUE LIST", key="btn_overdue"):
+            st.cache_data.clear()
+
+        df_od = fetch_overdue()
+        if df_od.empty:
+            st.success("No overdue loans — all clear! ✅")
+        else:
+            st.error(f"{len(df_od)} overdue loan(s) found.")
+            df_od["due_date"] = pd.to_datetime(df_od["due_date"]).dt.date
+            today = date.today()
+            df_od["Days Overdue"] = df_od["due_date"].apply(
+                lambda d: max(0, (today - d).days)
+            )
+            df_od["Fine (₹)"] = df_od["Days Overdue"] * 5
+            st.dataframe(
+                df_od[["isbn", "coustomer_id", "issue_date", "due_date",
+                        "Days Overdue", "Fine (₹)"]],
+                use_container_width=True
+            )
+            st.caption(f"Total fines outstanding: ₹{df_od['Fine (₹)'].sum():.0f}")
+
+# ══════════════════════════════════════════════
+# COL 3 — Customers & Quick Stats
+# ══════════════════════════════════════════════
+with col3:
+    st.subheader("👤 Customers")
+
+    # ── Register ──
+    with st.expander("➕ Register Customer", expanded=False):
+        with st.form("reg_form", clear_on_submit=True):
+            r_id    = st.text_input("Customer ID",   placeholder="e.g. 1001")
+            r_name  = st.text_input("Full Name",     placeholder="Jane Doe")
+            r_email = st.text_input("Email",         placeholder="jane@example.com")
+            r_phone = st.text_input("Phone Number",  placeholder="9876543210")
+
+            if st.form_submit_button("REGISTER"):
+                if not r_id or not r_name:
+                    st.warning("ID and Name are required.")
+                else:
+                    try:
+                        payload = {
+                            "coustomer_id":  int(r_id),
+                            "name":          r_name,
+                            "email_id":      r_email or "N/A",
+                            "mobile_number": int(r_phone) if r_phone.isdigit() else 0,
+                        }
+                        resp, err = api("post", "/customers/", json=payload)
+                        if err:
+                            st.error(err)
+                        elif resp.status_code == 201:
+                            st.success(f"✅ {r_name} registered!")
+                        else:
+                            show_error(resp, "Could not register.")
+                    except ValueError:
+                        st.error("Customer ID must be an integer.")
+
+    # ── Lookup ──
+    with st.expander("🔎 Lookup Customer", expanded=False):
+        lk_id = st.text_input("Customer ID", key="lk_id", placeholder="e.g. 1001")
+        if st.button("SEARCH", key="btn_lookup_cust"):
+            if not lk_id:
+                st.warning("Enter a Customer ID.")
+            else:
+                resp, err = api("get", f"/customers/{lk_id.strip()}")
+                if err:
+                    st.error(err)
+                elif resp.status_code == 200:
+                    c = resp.json()
+                    st.markdown(f"""
+                    **{c['name']}**  
+                    📧 {c['email_id']}  
+                    📞 {c['mobile_number']}  
+                    🪪 ID: `{c['coustomer_id']}`
+                    """)
+                else:
+                    show_error(resp, "Customer not found.")
+
+    # ── Delete ──
+    with st.expander("🗑️ Delete Customer", expanded=False):
+        with st.form("del_form", clear_on_submit=True):
+            d_id = st.text_input("Customer ID", placeholder="e.g. 1001")
+            if st.form_submit_button("DELETE"):
+                if not d_id.strip():
+                    st.warning("Enter a Customer ID.")
+                else:
+                    try:
+                        resp, err = api("delete", f"/customers/{int(d_id)}")
+                        if err:
+                            st.error(err)
+                        elif resp.status_code == 200:
+                            st.success("Customer deleted.")
+                        else:
+                            show_error(resp, "Could not delete customer.")
+                    except ValueError:
+                        st.error("Customer ID must be an integer.")
+
+    st.divider()
+
+    # ── Quick Stats ──
+    st.subheader("📈 Stats")
+    df_books = fetch_all_books()
+    if not df_books.empty:
+        total     = len(df_books)
+        available = int(df_books["available"].sum())
+        on_loan   = total - available
+
+        st.markdown(f"""
+        <div class="metric-box">
+            <div class="label">Total Books</div>
+            <div class="value">{total}</div>
+        </div>
+        <div class="metric-box">
+            <div class="label">Available</div>
+            <div class="value" style="color:#4caf82">{available}</div>
+        </div>
+        <div class="metric-box">
+            <div class="label">On Loan</div>
+            <div class="value" style="color:#cf8090">{on_loan}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("No books in database yet.")
+
+    st.divider()
+
+    if st.button("📊 OPEN FULL DATABASE", key="open_db"):
+        st.session_state.view_db = True
+        st.rerun()

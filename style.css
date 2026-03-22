@@ -1,582 +1,197 @@
-/* Target the entire Streamlit container */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+/* ── Base ── */
+html, body, [class*="css"] {
+    font-family: 'DM Sans', sans-serif;
+}
+
+/* ── App background ── */
 .stApp {
-    background-color: #0e1117; /* Replace with your preferred color */
+    background: #0f0f13;
+    color: #e8e4dc;
 }
 
-/* Optional: Targets the header area to ensure no white bars appear */
-header[data-testid="stHeader"] {
-    background-color: rgba(0,0,0,0); /* Transparent header */
+/* ── Header ── */
+.bms-header {
+    text-align: center;
+    padding: 2.5rem 0 1.5rem;
+    border-bottom: 1px solid #2a2a35;
+    margin-bottom: 2rem;
+}
+.bms-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: #e8d5a3;
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+.bms-header p {
+    color: #6b6878;
+    font-size: 0.9rem;
+    margin-top: 0.4rem;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
-/* Target the actual button element within the Streamlit container */
-.st-key-submit button {
-    /* Reset Streamlit's default box model to prevent the dark box/border */
-    all: unset !important;
-
-    /* Display properties for the new style */
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    
-    /* --- APPLY VISUAL STYLES DIRECTLY TO THE BUTTON --- */
-    background-color: #c2fbd7 !important; /* Light Green Background */
-    border-radius: 100px !important; 
-    
-    /* SHADOW EFFECT (Creates the glow)*/
-    box-shadow: rgba(44, 187, 99, 0.4) 0 0 10px !important; 
-    
-    /* Text */
-    color: green !important;
-    font-family: CerebriSans-Regular,-apple-system,system-ui,Roboto,sans-serif !important;
-    font-size: 16px !important;
-    font-weight: bold !important;
-
-    /* Spacing and Size */
-    min-height: 40px !important; 
-    padding: 7px 20px !important;
-    
-    /* Transition and Interaction */
-    cursor: pointer !important;
-    transition: all 250ms !important;
+/* ── Section headings ── */
+h2, h3, .stSubheader {
+    font-family: 'Playfair Display', serif !important;
+    color: #e8d5a3 !important;
 }
 
-/* Hover State */
-.st-key-submit button:hover {
-    /* Transform to scale and slight rotation on hover */
-    transform: scale(1.05)  !important;
-    
-    /* Optional: Enhance shadow on hover */
-    box-shadow: rgba(44, 187, 99, 0.6) 0 0 15px !important;
+/* ── Cards / Panels ── */
+.panel {
+    background: #16161e;
+    border: 1px solid #2a2a35;
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1rem;
 }
 
-/* Inject/Style the Text */
-.st-key-submit button:after {
-    /* Since st.button("") is used in Python, this injects the text */
-    content: "SUBMIT" !important;
-    position: static !important;
-    transform: none !important;
+/* ── Metric boxes ── */
+.metric-box {
+    background: #1c1c26;
+    border: 1px solid #2e2e3e;
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    text-align: center;
+    margin-bottom: 0.7rem;
+}
+.metric-box .label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #5a5768;
+    margin-bottom: 0.3rem;
+}
+.metric-box .value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: #e8d5a3;
+    font-weight: 700;
 }
 
-/* Ensure the outer container doesn't cause extra spacing/margin */
-.st-key-submit {
-    margin: 0 !important;
-    padding: 0 !important;
-    display: inline-block !important;
-}
-/* ===== SUBMIT BUTTON===== */
-.st-key-save_button button {
-    all: unset !important;
-    box-sizing: border-box !important;
-
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    background-color: #c2fbd7 !important;
-    border-radius: 999px !important;
-
-    box-shadow: rgba(44, 187, 99, 0.35) 0 0 10px !important;
-
-    color: #0f7a2e !important;
-    font-family: CerebriSans-Regular, -apple-system, system-ui, Roboto, sans-serif !important;
-    font-size: 14px !important;
-    font-weight: 900 !important;
-
-    padding: 12px 32px !important;
-    min-width: 260px !important; 
-    white-space: nowrap !important;
-
-    cursor: pointer !important;
-    transition: transform 200ms ease, box-shadow 200ms ease !important;
+/* ── Divider ── */
+hr {
+    border-color: #2a2a35 !important;
+    margin: 1.2rem 0 !important;
 }
 
-/* Hover */
-.st-key-save_button button:hover {
-    transform: scale(1.04) !important;
-    box-shadow: rgba(44, 187, 99, 0.55) 0 0 14px !important;
+/* ── Buttons ── */
+.stButton > button {
+    background: #e8d5a3 !important;
+    color: #0f0f13 !important;
+    border: none !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1.2rem !important;
+    transition: background 0.2s, transform 0.1s !important;
+    width: 100% !important;
+}
+.stButton > button:hover {
+    background: #f0e2b4 !important;
+    transform: translateY(-1px) !important;
+}
+.stButton > button:active {
+    transform: translateY(0) !important;
 }
 
-/* Kill Streamlit paragraph wrapping */
-.st-key-save_button button p {
-    margin: 0 !important;
-    white-space: nowrap !important;
-}
-/* Container should not stretch */
-[data-testid="stButton"][class*="st-key-save_button"] {
-    width: auto !important;
-}
-/* ===== CLEAR / DANGER BUTTON ===== */
-.st-key-clear button {
-    /* Reset Streamlit defaults */
-    all: unset !important;
-
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-
-    /* --- RED THEME --- */
-    background-color: #ffd6d6 !important;      /* light red base */
-    border-radius: 100px !important;
-
-    /* Red glow shadow */
-    box-shadow: rgba(220, 38, 38, 0.45) 0 0 10px !important;
-
-    /* Text */
-    color: #b91c1c !important;                  /* deep red text */
-    font-family: CerebriSans-Regular,-apple-system,system-ui,Roboto,sans-serif !important;
-    font-size: 16px !important;
-    font-weight: bold !important;
-
-    /* Size */
-    min-height: 40px !important;
-    padding: 7px 20px !important;
-
-    cursor: pointer !important;
-    transition: all 250ms !important;
+/* Secondary / danger button override via key classes */
+button[kind="secondary"] {
+    background: #2a2a35 !important;
+    color: #e8e4dc !important;
 }
 
-/* Hover */
-.st-key-clear button:hover {
-    transform: scale(1.05) !important;
-    box-shadow: rgba(220, 38, 38, 0.65) 0 0 15px !important;
+/* ── Inputs ── */
+.stTextInput > div > div > input,
+.stNumberInput > div > div > input {
+    background: #1c1c26 !important;
+    border: 1px solid #2e2e3e !important;
+    color: #e8e4dc !important;
+    border-radius: 6px !important;
+    font-family: 'DM Sans', sans-serif !important;
+}
+.stTextInput > div > div > input:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: #e8d5a3 !important;
+    box-shadow: 0 0 0 2px rgba(232, 213, 163, 0.12) !important;
 }
 
-/* Inject text */
-.st-key-clear button:after {
-    content: "CLEAR" !important;
-    position: static !important;
-    transform: none !important;
+/* ── Expander ── */
+.streamlit-expanderHeader {
+    background: #1c1c26 !important;
+    border: 1px solid #2e2e3e !important;
+    border-radius: 8px !important;
+    color: #e8d5a3 !important;
+    font-family: 'DM Sans', sans-serif !important;
 }
 
-/* Container cleanup */
-.st-key-clear {
-    margin: 0 !important;
-    padding: 0 !important;
-    display: inline-block !important;
+/* ── Dataframe ── */
+.stDataFrame {
+    border: 1px solid #2a2a35 !important;
+    border-radius: 10px !important;
+    overflow: hidden;
 }
 
-/* ===== ISSUE BOOK BUTTONS ===== */
-.st-key-button-77,
-.st-key-button-77 * {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
+/* ── Tab bar ── */
+.stTabs [data-baseweb="tab-list"] {
+    background: #16161e;
+    border-bottom: 1px solid #2a2a35;
+    gap: 0;
 }
-
-/* Main button */
-.st-key-button-77 {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-
-  color: #ffffff !important;
-  cursor: pointer !important;
-  font-family: CerebriSans-Regular,-apple-system,system-ui,Roboto,sans-serif !important;
-  font-size: 16px !important;
-  font-weight: bold !important;
-
-  min-height: 40px !important;         
-  padding: 7px 20px !important;       
-
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  position: relative !important;
-  border-radius: 100px !important;
-
-  z-index: 1 !important;
+.stTabs [data-baseweb="tab"] {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #6b6878 !important;
+    padding: 0.75rem 1.4rem;
+    border-bottom: 2px solid transparent;
 }
-
-/* Inner Streamlit div & span */
-.st-key-button-77 > div,
-.st-key-button-77 > div > span {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-}
-
-/* Gradient layer */
-.st-key-button-77::after {
-  content: "" !important;
-  position: absolute !important;
-
-  inset: 3px !important;               /* thinner border look */
-  border-radius: 100px !important;
-
-  background-image: linear-gradient(
-    92.83deg,
-    #ff7426 0%,
-    #f93a13 100%
-  ) !important;
-
-  z-index: -1 !important;
-  transition: inset 120ms ease-out !important;
-}
-
-/* Shadow layer */
-.st-key-button-77::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: -2.5px !important;
-  background-color: rgba(249, 58, 19, 0.32) !important; /* exact shadow */
-  border-radius: 100px !important;
-  z-index: -2 !important; /* behind gradient */
-}
-
-/* Hover */
-.st-key-button-77:hover::after {
-  inset: 0 !important;
-}
-
-/* Active */
-.st-key-button-77:active {
-  color: #dddddd !important;
-}
-
-.st-key-button-77:active::after {
-  background-image: linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.2),
-      rgba(0, 0, 0, 0.2)
-    ),
-    linear-gradient(92.83deg, #ff7426 0%, #f93a13 100%) !important;
-
-  inset: 3px !important;
-}
-
-/* Disabled */
-.st-key-button-77:disabled {
-  opacity: 0.3 !important;
-  cursor: not-allowed !important;
-}
-
-/* ===== RETURN BOOK BUTTONS ===== */
-.st-key-button-78,
-.st-key-button-78 * {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-/* Main button */
-.st-key-button-78 {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-
-  color: #ffffff !important;
-  cursor: pointer !important;
-  font-family: Eina01, sans-serif !important;
-  font-size: 16px !important;
-  font-weight: 800 !important;
-
-  min-height: 40px !important;
-  padding: 7px 20px !important;
-
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  position: relative !important;
-  border-radius: 80px !important;
-
-  z-index: 1 !important;
-}
-
-/* Remove Streamlit inner wrappers */
-.st-key-button-78 > div,
-.st-key-button-78 > div > span {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-/* OUTER GRADIENT (border / base layer) */
-.st-key-button-78::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-
-  background-image: linear-gradient(
-    92.83deg,
-    #ff7426 0%,
-    #f93a13 100%
-  ) !important;
-
-  border-radius: 80px !important;
-  z-index: -2 !important;
-}
-
-/* INNER DARK LAYER */
-.st-key-button-78::after {
-  content: "" !important;
-  position: absolute !important;
-
-  inset: 3px !important;
-  border-radius: 80px !important;
-
-  background-image: linear-gradient(
-    #541a0f 0%,
-    #0c0d0d 100%
-  ) !important;
-
-  z-index: -1 !important;
-  transition: all 120ms ease-out !important;
-}
-
-/* Hover: dark layer disappears */
-.st-key-button-78:hover::after {
-  inset: 0 !important;
-  opacity: 0 !important;
-}
-
-/* Active */
-.st-key-button-78:active {
-  color: #cccccc !important;
-}
-
-.st-key-button-78:active::before {
-  background-image: linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.2),
-      rgba(0, 0, 0, 0.2)
-    ),
-    linear-gradient(92.83deg, #ff7426 0%, #f93a13 100%) !important;
-}
-
-.st-key-button-78:active::after {
-  inset: 3px !important;
-  opacity: 1 !important;
-}
-
-/* Disabled */
-.st-key-button-78:disabled {
-  opacity: 0.3 !important;
-  cursor: not-allowed !important;
-}
-
-/* ===== OPEN DB BUTTONS ===== */
-.st-key-open-db,
-.st-key-open-db * {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-/* Main button */
-.st-key-open-db {
-  appearance: none !important;
-  -webkit-appearance: none !important;
-
-  color: #ffffff !important;
-  cursor: pointer !important;
-  font-family: Eina01, sans-serif !important;
-  font-size: 16px !important;
-  font-weight: 800 !important;
-
-  min-height: 40px !important;
-  padding: 7px 20px !important;
-
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-
-  position: relative !important;
-  border-radius: 80px !important;
-
-  z-index: 1 !important;
-}
-
-/* Remove Streamlit inner wrappers */
-.st-key-open-db > div,
-.st-key-open-db > div > span {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-/* OUTER GRADIENT (border / base layer) */
-.st-key-open-db::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: 0 !important;
-
-  background-image: linear-gradient(
-    92.83deg,
-    #ff7426 0%,
-    #f93a13 100%
-  ) !important;
-
-  border-radius: 80px !important;
-  z-index: -2 !important;
-}
-
-/* INNER DARK LAYER */
-.st-key-open-db::after {
-  content: "" !important;
-  position: absolute !important;
-
-  inset: 3px !important;
-  border-radius: 80px !important;
-
-  background-image: linear-gradient(
-    #541a0f 0%,
-    #0c0d0d 100%
-  ) !important;
-
-  z-index: -1 !important;
-  transition: all 120ms ease-out !important;
-}
-
-/* Hover: dark layer disappears */
-.st-key-open-db:hover::after {
-  inset: 0 !important;
-  opacity: 0 !important;
-}
-
-/* Active */
-.st-key-open-db:active {
-  color: #cccccc !important;
-}
-
-.st-key-open-db:active::before {
-  background-image: linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.2),
-      rgba(0, 0, 0, 0.2)
-    ),
-    linear-gradient(92.83deg, #ff7426 0%, #f93a13 100%) !important;
-}
-
-.st-key-open-db:active::after {
-  inset: 3px !important;
-  opacity: 1 !important;
-}
-
-/* Disabled */
-.st-key-open-db:disabled {
-  opacity: 0.3 !important;
-  cursor: not-allowed !important;
-}
-
-/* ===== BUTTON SYNC: BORROWER & REGISTER ===== */
-.st-key-borowwer, .st-key-register_user_btn,
-.st-key-borowwer *, .st-key-register_user_btn * {
-  background: transparent !important;
-  background-color: transparent !important;
-  box-shadow: none !important;
-  border: none !important;
-}
-
-.st-key-borowwer, .st-key-register_user_btn {
-  appearance: none !important;
-  color: #ffffff !important;
-  cursor: pointer !important;
-  font-family: CerebriSans-Regular,-apple-system,system-ui,Roboto,sans-serif !important;
-  font-size: 16px !important;
-  font-weight: bold !important;
-  min-height: 40px !important;
-  padding: 7px 20px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative !important;
-  border-radius: 100px !important;
-  z-index: 1 !important;
-}
-
-/* Gradient layer for both */
-.st-key-borowwer::after, .st-key-register_user_btn::after {
-  content: "" !important;
-  position: absolute !important;
-  inset: 3px !important;
-  border-radius: 100px !important;
-  background-image: linear-gradient(92.83deg, #ff7426 0%, #f93a13 100%) !important;
-  z-index: -1 !important;
-  transition: inset 120ms ease-out !important;
-}
-
-/* Shadow layer for both */
-.st-key-borowwer::before, .st-key-register_user_btn::before {
-  content: "" !important;
-  position: absolute !important;
-  inset: -2.5px !important;
-  background-color: rgba(249, 58, 19, 0.32) !important;
-  border-radius: 100px !important;
-  z-index: -2 !important;
-}
-
-/* Hover & Active states */
-.st-key-borowwer:hover::after, .st-key-register_user_btn:hover::after {
-  inset: 0 !important;
-}
-
-
-/* ===== INPUT BOX ===== */
-/* Container */
-.custom-input-container {
-  font-family: 'Segoe UI', sans-serif;
-  margin: 1.5em 0;
-  position: relative;
-  width: 100%;
-}
-
-/* The actual input box */
-.custom-input-container input {
-  font-size: 1rem;
-  padding: 0.8em;
-  outline: none;
-  border: 2px solid #ff6e1d; /* Matches your orange theme */
-  background-color: transparent;
-  border-radius: 20px;
-  width: 100%;
-  color: white;
-}
-
-/* The label that floats */
-.custom-input-container label {
-  font-size: 1rem;
-  position: absolute;
-  left: 0;
-  top: 0;
-  padding: 0.8em;
-  margin-left: 0.5em;
-  pointer-events: none;
-  transition: all 0.3s ease;
-  color: #ff6e1d;
-}
-
-/* Floating logic: When focused or typing */
-.custom-input-container input:focus ~ label,
-.custom-input-container input:not(:placeholder-shown) ~ label {
-  transform: translateY(-50%) scale(.8);
-  margin: 0;
-  margin-left: 1.3em;
-  padding: 0 0.4em;
-  background-color: #0e1117; /* Matches Streamlit dark background */
-}
-
-.custom-input-container input:focus {
-  border-color: #2cfff2; /* Neon blue on focus */
-}
-/* Targets the Streamlit Input Wrapper */
-div[data-baseweb="input"] {
-    border: 2px solid #00d5ff !important;
-    border-radius: 20px !important;
+.stTabs [aria-selected="true"] {
+    color: #e8d5a3 !important;
+    border-bottom-color: #e8d5a3 !important;
     background: transparent !important;
 }
 
-/* Move the Streamlit Label (the one above the box) down inside the box */
-.stTextInput label, .stNumberInput label {
-    transform: translateY(35px) translateX(15px);
-    transition: all 0.3s ease;
-    color: #ffffff !important;
-    pointer-events: none;
+/* ── Form submit button ── */
+.stFormSubmitButton > button {
+    background: #e8d5a3 !important;
+    color: #0f0f13 !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    border-radius: 6px !important;
+    width: 100% !important;
 }
 
-/* When the user clicks (Focus), move the label up and shrink it */
-.stTextInput:focus-within label, .stNumberInput:focus-within label {
-    transform: translateY(10px) translateX(15px) scale(0.8);
-    background-color: #0e1117; /* Match your app background */
-    padding: 0 5px;
+/* ── Status badges ── */
+.badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
 }
+.badge-green { background: #1a3326; color: #4caf82; }
+.badge-red   { background: #321a1a; color: #cf6679; }
+
+/* ── Caption / small text ── */
+.stCaption { color: #5a5768 !important; }
+
+/* ── Spinner ── */
+.stSpinner > div { border-top-color: #e8d5a3 !important; }
+
+/* ── Success / error / info / warning ── */
+.stSuccess  { background: #1a2e22 !important; border-color: #2e5c3e !important; color: #7ecf9f !important; }
+.stError    { background: #2e1a1e !important; border-color: #5c2e36 !important; color: #cf8090 !important; }
+.stInfo     { background: #1a1e2e !important; border-color: #2e365c !important; color: #8090cf !important; }
+.stWarning  { background: #2e281a !important; border-color: #5c4e2e !important; color: #cfb880 !important; }

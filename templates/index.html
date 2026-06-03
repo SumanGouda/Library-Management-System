@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Management System</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-logo"><i class="ti ti-books"></i></div>
+      <div>
+        <div class="header-title">Book Management System</div>
+        <div class="header-sub">library_ops_dashboard / v1.0</div>
+      </div>
+    </div>
+    <a href="/books/" target="_blank" class="view-db-btn">
+      <i class="ti ti-database"></i> Full database
+    </a>
+  </div>
+
+  <!-- ── STATS ── -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total books</div>
+      <div class="stat-value cyan">{{ total }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Available</div>
+      <div class="stat-value green">{{ available }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">On loan</div>
+      <div class="stat-value amber">{{ on_loan }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Overdue</div>
+      <div class="stat-value red">{{ overdue }}</div>
+    </div>
+  </div>
+
+  <!-- ── MAIN GRID ── -->
+  <div class="main-grid">
+
+    <!-- ══ COL 1: Books ══ -->
+    <div class="panel">
+      <div class="panel-title">
+        <i class="ti ti-book"></i> Book Inventory
+      </div>
+
+      <div class="form-container">
+
+        <!-- SEARCH FORM -->
+        <form action="/books/search" method="POST" style="margin-bottom:15px;">
+          <div class="form-group">
+            <label class="form-label">Search Book by ISBN</label>
+            <div style="display:flex; gap:10px;">
+              <input type="text" name="search_isbn" placeholder="e.g. 9780132350884"
+                     value="{{ searched_isbn or '' }}" style="flex:1;" required>
+              <button type="submit" class="btn btn-primary" style="margin-top:0; padding:0 15px;">
+                <i class="ti ti-search"></i> Search
+              </button>
+            </div>
+          </div>
+        </form>
+
+        <!-- BOOK PREVIEW + SAVE FORM — shown only after a successful search -->
+        {% if book_data %}
+        <div style="border-top:1px solid var(--border); padding-top:15px; margin-top:5px;">
+
+          <!-- Cover image + meta grid -->
+          <div class="book-preview-grid">
+            <div class="book-cover-wrap">
+              {% if book_data.cover_image_url %}
+                <img src="{{ book_data.cover_image_url }}"
+                     alt="{{ book_data.title }} cover"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="book-cover-placeholder" style="display:none;">
+                  <i class="ti ti-book-off"></i>
+                </div>
+              {% else %}
+                <div class="book-cover-placeholder">
+                  <i class="ti ti-book-off"></i>
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="book-meta-wrap">
+              <div class="book-meta-title">{{ book_data.title }}</div>
+              <div class="book-meta-author">{{ book_data.author }}</div>
+              <div class="book-meta-detail">
+                <i class="ti ti-file-text" style="font-size:11px;"></i> {{ book_data.pages }} pages
+              </div>
+              <div class="book-meta-detail">
+                <i class="ti ti-tag" style="font-size:11px;"></i> {{ book_data.genre }}
+              </div>
+              <div class="book-meta-detail" style="font-size:10px; color:var(--text-muted);">
+                ISBN: {{ book_data.isbn }}
+              </div>
+            </div>
+          </div>
+
+          <!-- SAVE FORM -->
+          <form action="/books/add" method="POST">
+            <input type="hidden" name="isbn"   value="{{ book_data.isbn }}">
+            <input type="hidden" name="title"  value="{{ book_data.title }}">
+            <input type="hidden" name="author" value="{{ book_data.author }}">
+            <input type="hidden" name="pages"  value="{{ book_data.pages }}">
+            <input type="hidden" name="genre"  value="{{ book_data.genre }}">
+
+            <div class="form-row-2col">
+              <div class="form-group">
+                <label class="form-label">Market Price (&#8377;)</label>
+                <input type="number" name="price" step="0.01" min="0.01"
+                       placeholder="799.00" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Copies to Add</label>
+                <input type="number" name="quantity_to_add" min="1" value="1" required>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:12px;">
+              <button type="submit" class="btn btn-primary form-submit-btn"
+                      style="flex:1; margin-top:0;">
+                <i class="ti ti-device-floppy"></i> Save Book
+              </button>
+              <a href="/" class="btn"
+                 style="flex:1; background:var(--bg-elevated); color:var(--text-secondary);
+                        border:1px solid var(--border); margin-top:0; text-align:center;
+                        text-decoration:none; line-height:35px; height:35px;
+                        border-radius:var(--radius-sm);">
+                <i class="ti ti-x"></i> Skip
+              </a>
+            </div>
+          </form>
+
+        </div>
+        {% endif %}
+
+      </div>
+
+      <hr class="divider">
+
+      <!-- DELETE FORM -->
+      <form action="/books/delete" method="POST" class="form-container">
+        <div class="form-group">
+          <label class="form-label">Purge from Inventory (ISBN)</label>
+          <input type="text" name="isbn" placeholder="Enter ISBN to completely remove" required>
+        </div>
+        <button type="submit" class="btn btn-danger form-submit-btn">
+          <i class="ti ti-trash"></i> Permanently Delete Book
+        </button>
+      </form>
+
+    </div>
+
+    <!-- ══ COL 2: Loans ══ -->
+    <div class="panel">
+      <div class="panel-title">
+        <i class="ti ti-transform"></i> Circulation Desk
+      </div>
+
+      <!-- ISSUE BOOK -->
+      <div class="section-block">
+        <div class="section-subtitle">
+          <i class="ti ti-arrow-bar-right"></i> Issue Book to Customer
+        </div>
+        <form action="/loans/issue" method="POST" class="form-container">
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label class="form-label">Customer ID</label>
+              <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Book ISBN</label>
+              <input type="text" name="isbn" placeholder="e.g. 9780132350884" required>
+            </div>
+          </div>
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label class="form-label">Date Borrowed</label>
+              <input type="date" name="date_borrowed" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Due Date</label>
+              <input type="date" name="date_due" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary form-submit-btn">
+            Confirm Loan Allocation
+          </button>
+        </form>
+      </div>
+
+      <hr class="divider">
+
+      <!-- RETURN BOOK -->
+      <div class="section-block">
+        <div class="section-subtitle">
+          <i class="ti ti-arrow-bar-left"></i> Check-In / Return Book
+        </div>
+        <form action="/loans/return" method="POST" class="form-container">
+          <div class="form-row-2col">
+            <div class="form-group">
+              <label class="form-label">Customer ID</label>
+              <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Book ISBN</label>
+              <input type="text" name="isbn" placeholder="e.g. 9780132350884" required>
+            </div>
+          </div>
+          <button type="submit" class="btn form-submit-btn">
+            Process Return Logic
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- ══ COL 3: Customers ══ -->
+    <div class="panel">
+      <div class="panel-title">
+        <i class="ti ti-users"></i> Customer Profiles
+      </div>
+
+      <!-- REGISTER -->
+      <div class="section-block">
+        <div class="section-subtitle">
+          <i class="ti ti-user-plus"></i> Register Profile
+        </div>
+        <form action="/customers/" method="POST" class="form-container">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" name="name" placeholder="Jane Doe" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email ID</label>
+            <input type="email" name="email_id" placeholder="jane@example.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mobile Number</label>
+            <input type="number" name="mobile_number" placeholder="9876543210" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input type="date" name="date_of_birth" required>
+          </div>
+          <button type="submit" class="btn btn-primary form-submit-btn">
+            Create Profile Record
+          </button>
+        </form>
+      </div>
+
+      <hr class="divider">
+
+      <!-- LOOKUP -->
+      <div class="section-block">
+        <div class="section-subtitle">
+          <i class="ti ti-search"></i> Profile Search
+        </div>
+        <form action="/customers/lookup" method="GET" class="form-container">
+          <div class="form-group">
+            <label class="form-label">Target Customer ID</label>
+            <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+          </div>
+          <button type="submit" class="btn form-submit-btn">
+            Query Database Profile
+          </button>
+        </form>
+      </div>
+
+      <hr class="divider">
+
+      <!-- DELETE CUSTOMER -->
+      <div class="section-block">
+        <div class="section-subtitle">
+          <i class="ti ti-user-minus"></i> Revoke / Delete Profile
+        </div>
+        <form action="/customers/delete" method="POST" class="form-container">
+          <div class="form-group">
+            <label class="form-label">Target Customer ID</label>
+            <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+          </div>
+          <button type="submit" class="btn btn-danger form-submit-btn">
+            Purge Account From System
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+  <!-- /main-grid -->
+
+</div>
+<!-- /page -->
+
+<!-- ── TOAST — appears only when error or success exists ── -->
+{% if error or success %}
+<div id="toast" class="toast {{ 'danger' if error else 'success' }}">
+  {{ error if error else success }}
+</div>
+
+<script>
+  var t = document.getElementById("toast");
+  setTimeout(function() { t.style.display = "none"; }, 3000);
+</script>
+{% endif %}
+
+<!-- ── MINIMAL JS ── -->
+<script>
+  function toggleExpander(header) {
+    const body = header.nextElementSibling;
+    const icon = header.querySelector(".ti-chevron-down");
+    body.classList.toggle("open");
+    if (icon) icon.style.transform = body.classList.contains("open") ? "rotate(180deg)" : "";
+  }
+</script>
+
+</body>
+</html>

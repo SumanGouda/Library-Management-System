@@ -59,13 +59,17 @@ async def add_or_update_book(
 
 # ── Delete book from HTML form ──
 @router.post("/delete", status_code=status.HTTP_303_SEE_OTHER)
-async def delete_book_form(isbn: str = Form(...)):
+async def delete_book_form(
+    isbn:           str = Form(...),
+    qty_to_remove:  int = Form(1),
+):
     if not is_valid_isbn(isbn):
         return RedirectResponse(
             url="/?error=Invalid ISBN. Please enter a valid 10 or 13 digit ISBN.",
             status_code=303
         )
-    success = remove_book_from_db(isbn)
+
+    success = remove_book_from_db(isbn, qty_to_remove)
 
     if not success:
         return RedirectResponse(
@@ -74,6 +78,6 @@ async def delete_book_form(isbn: str = Form(...)):
         )
 
     return RedirectResponse(
-        url=f"/?success=Book {isbn} deleted successfully.",
+        url=f"/?success=Book {isbn} — {qty_to_remove} copy/copies removed successfully.",
         status_code=303
     )

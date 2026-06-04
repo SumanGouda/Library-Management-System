@@ -20,30 +20,83 @@
         <div class="header-sub">library_ops_dashboard / v1.0</div>
       </div>
     </div>
-    <a href="/books/" target="_blank" class="view-db-btn">
-      <i class="ti ti-database"></i> Full database
-    </a>
+
+    <div style="text-align:right;">
+      <div id="clock" style="font-size:22px; font-weight:700;
+                              color:var(--cyan-bright); font-family:var(--font-mono);
+                              letter-spacing:2px;">
+        00:00:00
+      </div>
+      <div id="date" style="font-size:12px; color:var(--text-secondary);
+                            font-family:var(--font-mono); letter-spacing:1px;">
+        Monday, 01 January 2025
+      </div>
+    </div>
   </div>
 
   <!-- ── STATS ── -->
   <div class="stats-row">
-    <div class="stat-card">
+    <a href="/stats/total" class="stat-card {% if table and table.title == 'All Books' %}active{% endif %}">
       <div class="stat-label">Total books</div>
       <div class="stat-value cyan">{{ total }}</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/stats/available" class="stat-card {% if table and table.title == 'Available Books' %}active{% endif %}">
       <div class="stat-label">Available</div>
       <div class="stat-value green">{{ available }}</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/stats/on-loan" class="stat-card {% if table and table.title == 'Active Loans' %}active{% endif %}">
       <div class="stat-label">On loan</div>
       <div class="stat-value amber">{{ on_loan }}</div>
-    </div>
-    <div class="stat-card">
+    </a>
+    <a href="/stats/overdue" class="stat-card {% if table and table.title == 'Overdue Customers' %}active{% endif %}">
       <div class="stat-label">Overdue</div>
       <div class="stat-value red">{{ overdue }}</div>
+    </a>
+  </div>
+
+  <!-- ── TABLE — shown when a stat card is clicked ── -->
+  {% if table %}
+  <div class="panel" style="margin-bottom: 1rem;">
+    <div class="panel-title">
+      <i class="ti ti-table"></i> {{ table.title }}
+      <a href="/" style="margin-left:auto; font-size:11px; color:var(--text-muted);
+                        text-decoration:none; font-weight:400;">
+        <i class="ti ti-x"></i> Close
+      </a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {% for header in table.headers %}
+            <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in table.rows %}
+          <tr>
+            {% for cell in row %}
+            <td>{{ cell }}</td>
+            {% endfor %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="{{ table.headers|length }}"
+                style="text-align:center; color:var(--text-muted);">
+              No records found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px; font-size:12px;
+                color:var(--text-muted); font-family:var(--font-mono);">
+      {{ table.rows|length }} record(s) found
     </div>
   </div>
+  {% endif %}
 
   <!-- ── MAIN GRID ── -->
   <div class="main-grid">
@@ -153,6 +206,10 @@
         <div class="form-group">
           <label class="form-label">Purge from Inventory (ISBN)</label>
           <input type="text" name="isbn" placeholder="Enter ISBN to completely remove" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Copies to Remove</label>
+          <input type="number" name="qty_to_remove" min="1" value="1" required>
         </div>
         <button type="submit" class="btn btn-danger form-submit-btn">
           <i class="ti ti-trash"></i> Permanently Delete Book
@@ -324,6 +381,53 @@
     if (icon) icon.style.transform = body.classList.contains("open") ? "rotate(180deg)" : "";
   }
 </script>
+
+<script>
+  function updateClock() {
+    const now  = new Date();
+
+    const days   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const months = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+
+    const hh  = String(now.getHours()).padStart(2, "0");
+    const mm  = String(now.getMinutes()).padStart(2, "0");
+    const ss  = String(now.getSeconds()).padStart(2, "0");
+    const day = days[now.getDay()];
+    const dd  = String(now.getDate()).padStart(2, "0");
+    const mon = months[now.getMonth()];
+    const yr  = now.getFullYear();
+
+    document.getElementById("clock").textContent = `${hh}:${mm}:${ss}`;
+    document.getElementById("date").textContent  = `${day}, ${dd} ${mon} ${yr}`;
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+
+{% if not session or not session.get('librarian_email') %}
+  <div class="login-overlay">
+    <div class="login-card-container">
+      <div class="login-card-header">
+        <i class="ti ti-shield-lock"></i>
+        <h2>Librarian Gatekeeper</h2>
+        <p>Access requires identity validation. Provide your whitelisted address to verify via Google.</p>
+      </div>
+      
+      <form action="/auth/login-trigger" method="POST" class="form-container">
+        <div class="form-group">
+          <label class="form-label">Whitelisted Corporate Email</label>
+          <input type="email" name="email" placeholder="name@library.com" required autocomplete="off">
+        </div>
+        
+        <button type="submit" class="btn btn-primary form-submit-btn" style="width: 100%; justify-content: center; margin-top: 8px;">
+          <i class="ti ti-brand-google"></i> Authenticate via Google
+        </button>
+      </form>
+    </div>
+  </div>
+{% endif %}
 
 </body>
 </html>

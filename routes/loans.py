@@ -2,6 +2,7 @@ from fastapi import APIRouter, status, Form
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from utils.db_helpers import book_issue, book_return
+from utils.helper import is_valid_isbn
 
 router = APIRouter(prefix="/loans", tags=["Loans"])
 
@@ -23,33 +24,35 @@ class ReturnBookRequest(BaseModel):
 # ── Issue book from HTML form ──
 @router.post("/issue", status_code=status.HTTP_303_SEE_OTHER)
 async def issue_book_endpoint(
-    isbn:        str = Form(...),
-    customer_id: int = Form(...),
+    isbn:          str = Form(...),
+    customer_id:   int = Form(...),
     date_borrowed: str = Form(...),
-    date_due:    str = Form(...),
+    date_due:      str = Form(...),
 ):
+    # validate ISBN 
+    if not is_valid_isbn(isbn):
+        return RedirectResponse(
+            url="/?error=Invalid ISBN. Please enter a valid 10 or 13 digit ISBN.",
+            status_code=303
+        )
+    # hit the DB 
     result = book_issue(
         isbn=isbn,
         customer_id=customer_id,
         date_borrowed=date_borrowed,
         date_due=date_due
     )
-
-    if result == "not_found":
+    error_messages = {
+        "not_found":      f"Customer ID {customer_id} does not exist.",
+        "already_issued": f"Customer {customer_id} already has book {isbn} issued.",
+        "fine_pending":   f"Customer {customer_id} has an outstanding fine. Please clear dues first.",
+        "book_not_found": f"Book {isbn} does not exist in the inventory.",
+        "out_of_stock":   f"Book {isbn} has no copies currently available.",
+        "database_error": "An unexpected error occurred while saving the loan.",
+    }
+    if result in error_messages:
         return RedirectResponse(
-            url=f"/?error=Cannot issue book. Customer ID {customer_id} does not exist.",
-            status_code=303
-        )
-
-    if result == "unavailable":
-        return RedirectResponse(
-            url=f"/?error=Cannot issue book {isbn}. No copies are currently available.",
-            status_code=303
-        )
-
-    if result == "database_error":
-        return RedirectResponse(
-            url="/?error=An unexpected error occurred while saving the loan.",
+            url=f"/?error={error_messages[result]}",
             status_code=303
         )
 
@@ -64,7 +67,14 @@ async def issue_book_endpoint(
 async def return_book_endpoint(
     customer_id: int = Form(...),
     isbn:        str = Form(...),
-):
+):  
+    # Validate ISBN
+    if not is_valid_isbn(isbn):
+        return RedirectResponse(
+            url="/?error=Invalid ISBN. Please enter a valid 10 or 13 digit ISBN.",
+            status_code=303
+        )
+    # Hit the DB
     result = book_return(customer_id, isbn)
 
     if result["status"] == "error":

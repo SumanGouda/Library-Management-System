@@ -5,6 +5,8 @@ from fastapi.templating import Jinja2Templates
 
 def base_context(request: Request, **kwargs) -> dict:
     context = {
+        "request":       request,         
+        "session":       request.session,   
         "book_data":     None,
         "searched_isbn": None,
         "search_error":  None,
@@ -17,7 +19,7 @@ def base_context(request: Request, **kwargs) -> dict:
         "table":         None,  
     }
     context.update(kwargs)
-    return context 
+    return context
 
 def success_response(templates: Jinja2Templates, request: Request,
                      message: str, **kwargs):

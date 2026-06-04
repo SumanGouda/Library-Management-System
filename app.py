@@ -4,6 +4,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from routes.books import router as books_router
+from routes.loans import router as loans_router
+from routes.auth import router as auth_router
+from starlette.middleware.sessions import SessionMiddleware 
 from utils.helper import is_valid_isbn, base_context, success_response, error_response
 from services.google_api import fetch_book_details_by_isbn
 from utils.db_helpers import (
@@ -12,14 +15,18 @@ from utils.db_helpers import (
     fetch_active_loan_data,
     fetch_overdue_customers_detailed_report
 )
+import os
 
 templates = Jinja2Templates(directory="templates")
 DB_PATH = "database/library.db"
 
 app = FastAPI()
+SESSION_SECRET = os.getenv("SESSION_SECRET_KEY")
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 app.include_router(books_router)
+app.include_router(loans_router)  
+app.include_router(auth_router)   
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 # ── get stats helper ──
 def get_stats():
@@ -43,7 +50,7 @@ def get_stats():
     return total, available, on_loan, overdue
 
 
-# ── dashboard ──
+# ── dashboard No Login Required ───
 @app.get("/", response_class=HTMLResponse)
 async def serve_dashboard(request: Request):
     total, available, on_loan, overdue = get_stats()
@@ -67,7 +74,39 @@ async def serve_dashboard(request: Request):
                              total=total, available=available,
                              on_loan=on_loan, overdue=overdue)
     )
- 
+
+# ── dashboard (Login Required at each refresh) ───
+# @app.get("/", response_class=HTMLResponse)
+# async def serve_dashboard(request: Request):
+#     total, available, on_loan, overdue = get_stats()
+
+#     error   = request.query_params.get("error", None)
+#     success = request.query_params.get("success", None)
+
+#     # Capture the template response map normally
+#     if error:
+#         response = error_response(templates, request, error,
+#                                   total=total, available=available,
+#                                   on_loan=on_loan, overdue=overdue)
+#     elif success:
+#         response = success_response(templates, request, success,
+#                                    total=total, available=available,
+#                                    on_loan=on_loan, overdue=overdue)
+#     else:
+#         response = templates.TemplateResponse(
+#             request=request,
+#             name="index.html",
+#             context=base_context(request,
+#                                  total=total, available=available,
+#                                  on_loan=on_loan, overdue=overdue)
+#         )
+
+#     # CLEAR THE SESSION REFRESH STATE BEFORE WE HAND OVER THE PAGE
+#     # This renders the screen successfully once, but ensures the NEXT reload prompts login!
+#     request.session.clear()
+
+#     return response
+
 @app.post("/books/search", response_class=HTMLResponse)
 async def search_book(request: Request, search_isbn: str = Form(...)):
     total, available, on_loan, overdue = get_stats()

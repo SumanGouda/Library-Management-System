@@ -310,6 +310,15 @@ def book_issue(isbn: str, customer_id: int, date_borrowed: str, date_due: str) -
         cursor.execute("SELECT 1 FROM customers WHERE customer_id = ?", (customer_id,))
         if cursor.fetchone() is None:
             return "not_found" 
+        
+        # Verify customer does not already have this book issued
+        cursor.execute("""
+            SELECT 1 FROM loans 
+            WHERE customer_id = ? AND isbn = ? AND returned = 0
+        """, (customer_id, isbn))
+        if cursor.fetchone() is not None:
+            print(f"Issue blocked: Customer {customer_id} already has book {isbn} issued.")
+            return "already_issued"
             
         # Verify customer does not have any active fines across unreturned loans
         cursor.execute("""
@@ -377,49 +386,63 @@ def book_return(customer_id: int, isbn: str) -> dict:
     1. Checks if the customer exists.
     2. Checks if the customer actually has this book issued (active loan).
     3. Checks if there is an unpaid fine on this specific loan.
-    4. Marks the book as returned and ensures availability status is set to 1.
+    4. Marks the book as returned and updates availability.
+    5. Resets active_loan flag if no more active loans remain.
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
+
     try: 
         cursor.execute("SELECT name FROM customers WHERE customer_id = ?", (customer_id,))
-        customer = cursor.fetchone()
-        if not customer:
+        if not cursor.fetchone():
             return {"status": "error", "message": "Customer does not exist."}
-         
+ 
         cursor.execute("""
-            SELECT fine_amount 
-            FROM loans 
+            SELECT fine_amount FROM loans
             WHERE customer_id = ? AND isbn = ? AND returned = 0
+            LIMIT 1
         """, (customer_id, isbn))
         loan = cursor.fetchone()
-        
+
         if not loan:
             return {"status": "error", "message": "This book is not currently issued to this customer."}
-        
-        fine_amount = loan[0] 
+ 
+        fine_amount = loan[0]
         if fine_amount > 0:
             return {
-                "status": "fine_pending", 
-                "message": f"Cannot return book. Customer has an outstanding fine of ₹{fine_amount:.2f}.",
+                "status":      "fine_pending",
+                "message":     f"Cannot return book. Outstanding fine of ₹{fine_amount:.2f}.",
                 "fine_amount": fine_amount
-            }   
-            
+            }
         cursor.execute("""
-            UPDATE loans 
-            SET returned = 1 
+            UPDATE loans
+            SET returned = 1
             WHERE customer_id = ? AND isbn = ? AND returned = 0
-        """, (customer_id, isbn)) 
-        
+        """, (customer_id, isbn))
+
+        #  increment book availability 
         cursor.execute("""
-            UPDATE books 
-            SET available = available + 1 
+            UPDATE books
+            SET available = available + 1
             WHERE isbn = ?
-        """, (isbn))
-        
+        """, (isbn,))
+
+        # reset active_loan if no more active loans
+        cursor.execute("""
+            SELECT COUNT(*) FROM loans
+            WHERE customer_id = ? AND returned = 0
+        """, (customer_id,))
+        remaining_loans = cursor.fetchone()[0]
+
+        if remaining_loans == 0:
+            cursor.execute("""
+                UPDATE customers
+                SET active_loan = 0
+                WHERE customer_id = ?
+            """, (customer_id,))
+
         conn.commit()
-        return {"status": "success", "message": "Book has been successfully returned!"} 
+        return {"status": "success", "message": "Book has been successfully returned!"}
 
     except sqlite3.Error as e:
         conn.rollback()
@@ -578,24 +601,56 @@ def fetch_overdue_customers_detailed_report():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
-        # GROUP_CONCAT aggregates the individual loan ISBN strings automatically
         query = """
             SELECT 
                 c.customer_id,
                 c.name,
                 c.mobile_number,
                 c.email_id,
-                COUNT(l.id) AS unreturned_books_count,
-                SUM(l.fine_amount) AS net_fine_amount,
+                COUNT(l.id)              AS unreturned_books_count,
+                SUM(l.fine_amount)       AS net_fine_amount,
                 GROUP_CONCAT(l.isbn, ', ') AS overdue_isbns
             FROM customers c
             JOIN loans l ON c.customer_id = l.customer_id
             WHERE l.returned = 0
             GROUP BY c.customer_id, c.name, c.mobile_number, c.email_id
-            HAVING net_fine_amount > 0
+            HAVING SUM(l.fine_amount) > 0
         """
         cursor.execute(query)
         return cursor.fetchall()
     finally:
         cursor.close()
-        conn.close()      
+        conn.close() 
+
+def verify_librarian_email(email):
+    """
+    Checks if an email exists in the auth_allowed_librarians whitelist table.
+    Returns the (librarian_id, name) tuple if found, otherwise None.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT librarian_id, name 
+            FROM auth_allowed_librarians 
+            WHERE email_id = ?
+        """, (email,))
+        return cursor.fetchone()
+    finally:
+        cursor.close()
+        conn.close()
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+            

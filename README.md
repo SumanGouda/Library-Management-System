@@ -1,46 +1,51 @@
-# ⚡ AeroLib | High-Performance Library Engine
-# <p align="center"><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Books.png" width="50" align = "Center" /> AeroLib Engine
-<p align="center"> <b>A high-speed Library Management System for the Desktop Web.</b><br> <i>Now powered by a Cleaned SQL Architecture.</i> </p>
----
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![MySQL](https://img.shields.io/badge/Database-MySQL-4479A1?style=for-the-badge&logo=mysql)](https://www.mysql.com/)
-[![Streamlit](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://streamlit.io/)
+# Library Management System
 
-> **The Goal:** Building a lightning-fast, persistent library management system for the modern desktop web.
+A production-ready, highly secure web application designed specifically for desktop librarian dashboards. Built with a minimal Dark Cyan theme using FastAPI, SQLite, and Google OAuth 2.0.
 
----
+## 🚀 Features
 
-## 💎 The "Aero" Update: SQL Migration
-The latest version of AeroLib introduces a **Cleaned Feature** architecture. We moved away from volatile, memory-heavy JSON lists to a **Relational SQL Database**.
-
-
-
-**Why this matters:**
-* **Instant Retrieval:** Replaced manual Binary Search with **B-Tree SQL Indexing**. Finding a user is now $O(\log n)$ at the hardware level.
-* **Data Integrity:** Primary Key constraints prevent duplicate `coustomer_id` entries automatically.
-* **Persistence:** Your library data survives server restarts and crashes.
-* **Scalability:** Optimized to handle 100,000+ records without slowing down the RAM.
+- **Modular Backend:** API endpoints are separated into clean, decoupled router files.
+- **Librarian Whitelist Gatekeeper:** Custom authentication loop that restricts login access to authorized emails specified in the local database.
+- **Google OAuth 2.0:** Secure, frameworkless single-sign-on implementation.
+- **Google Books API Integration:** Dynamic metadata search that parses volatile JSON payloads into structured SQL records.
+- **Vibe Coded UI:** A custom-designed CSS administrative dashboard centered around a layout using *Syne* and *DM Mono* typography.
 
 ---
 
-## 🌟 Key Features
+## 🛠️ Installation & Setup
 
-* 🔍 **Google Books Integration:** Instant metadata fetching (Title, Author, Genre) via ISBN.
-* 🛡️ **Smart Deletion Safety:** Users with unreturned books are protected from accidental deletion.
-* ⚡ **Hash Map Catalog:** Books are stored in an $O(1)$ Hash Map for the fastest possible UI response.
-* 🎨 **Aero UI:** A clean, responsive desktop webpage interface built with Streamlit.
+### 1. Clone the Repository
+```bash
+git clone [https://github.com/SumanGouda/Library-Management-System.git](https://github.com/SumanGouda/Library-Management-System.git)
+cd Library-Management-System
+```
 
----
+2. Configure Environment Variables
+Create a .env file in the root directory (this file is ignored by git via .gitignore). Add your secret parameters:
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+SESSION_SECRET_KEY="your-random-secure-session-string"
 
-## 📂 Project Architecture
+3. Initialize the Relational Database
+Create a new SQLite database file named library.db inside the database/ directory. Structure your tables to include:
 
-### **The Database Schema**
-Our SQL core is designed for efficiency:
+- auth_allowed_librarians
+- books
+- customers
+- loans
+
+4. Seed the Whitelist Admin Account
+Because access control is locked down natively by email verification, you must manually execute an initial SQL entry to whitelist your account before signing in:
 
 ```sql
-CREATE TABLE customers (
-    coustomer_id INT PRIMARY KEY,   -- Indexed unique identifier
-    name VARCHAR(50) NOT NULL,
-    email_id VARCHAR(100),
-    mobile_number BIGINT
-);
+INSERT INTO auth_allowed_librarians (email) VALUES ('your.email@gmail.com');
+```
+5. Install Dependencies & Run
+```bash
+pip install -r requirements.txt
+uvicorn app:app --reload
+```
+
+# 📄 Documentation & Schema Details
+For a deeper dive into the specific relational database tables, structural keys, and full architecture descriptions, visit the core project documentation page:
+👉 DeepWiki Database Schema : https://deepwiki.com/SumanGouda/Library-Management-System

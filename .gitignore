@@ -1,4 +1,22 @@
+# Python bytecode caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Environment configurations (API keys, secrets)
 .env
-library.db
-.db
-/database
+
+# SQLite local database
+# Note: You generally don't want to track your active database file. 
+database/library.db
+*.db
+*.sqlite3
+
+# Operating System files
+.DS_Store
+Thumbs.db

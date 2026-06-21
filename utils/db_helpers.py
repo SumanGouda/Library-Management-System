@@ -69,34 +69,74 @@ def delete_customer_data(customer_id: int) -> str:
         cursor.close()
         conn.close()
               
-def get_customer_data(customer_id: int): 
-    conn = sqlite3.connect(DB_PATH) 
-    
+def get_customer_data(customer_id: int):
+    conn = sqlite3.connect(DB_PATH)
+
     conn.row_factory = lambda cursor, row: {
         col[0]: row[idx] for idx, col in enumerate(cursor.description)
-    } 
+    }
     cursor = conn.cursor()
-    
+
     try:
-        customer_query = "SELECT customer_id, name, email_id, mobile_number FROM customers WHERE customer_id = ?"
+        # ── Basic customer info ──
+        customer_query = "SELECT customer_id, name, email_id, mobile_number, date_of_birth FROM customers WHERE customer_id = ?"
         cursor.execute(customer_query, (customer_id,))
-        customer = cursor.fetchone()  
-        
+        customer = cursor.fetchone()
+
         if not customer:
             return None
-            
-        fine_query = """
+
+        # ── Currently issued books (active, not returned) ──
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM loans 
+            WHERE customer_id = ? AND returned = 0
+        """, (customer_id,))
+        customer["books_currently_issued"] = cursor.fetchone()["count"]
+
+        # ── Total books returned (lifetime) ──
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM loans 
+            WHERE customer_id = ? AND returned = 1
+        """, (customer_id,))
+        customer["books_returned"] = cursor.fetchone()["count"]
+
+        # ── Currently overdue books ──
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM loans 
+            WHERE customer_id = ? AND returned = 0 AND due_date < date('now')
+        """, (customer_id,))
+        customer["books_overdue"] = cursor.fetchone()["count"]
+
+        # ── Total outstanding fine ──
+        cursor.execute("""
             SELECT COALESCE(SUM(fine_amount), 0.0) as total_fine 
             FROM loans 
             WHERE customer_id = ? AND returned = 0
-        """
-        cursor.execute(fine_query, (customer_id,))
-        fine_result = cursor.fetchone()
-        
-        customer["total_fine_amount"] = fine_result["total_fine"]
-        
+        """, (customer_id,))
+        customer["total_fine_amount"] = cursor.fetchone()["total_fine"]
+
+        # ── Total books borrowed ever (lifetime activity) ──
+        cursor.execute("""
+            SELECT COUNT(*) as count FROM loans 
+            WHERE customer_id = ?
+        """, (customer_id,))
+        customer["total_books_borrowed"] = cursor.fetchone()["count"]
+
+        # ── Most recently issued book ──
+        cursor.execute("""
+            SELECT b.title, l.issue_date, l.due_date 
+            FROM loans l
+            JOIN books b ON l.isbn = b.isbn
+            WHERE l.customer_id = ?
+            ORDER BY l.issue_date DESC
+            LIMIT 1
+        """, (customer_id,))
+        last_loan = cursor.fetchone()
+        customer["last_borrowed_book"] = last_loan["title"] if last_loan else None
+        customer["last_due_date"] = last_loan["due_date"] if last_loan else None
+
         return customer
-        
+
     finally:
         cursor.close()
         conn.close()

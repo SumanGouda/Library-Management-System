@@ -307,6 +307,10 @@
             <input type="number" name="mobile_number" placeholder="9876543210" required>
           </div>
           <div class="form-group">
+            <label class="form-label">Customer ID</label>
+            <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+          </div>
+          <div class="form-group">
             <label class="form-label">Date of Birth</label>
             <input type="date" name="date_of_birth" required>
           </div>
@@ -326,12 +330,68 @@
         <form action="/customers/lookup" method="GET" class="form-container">
           <div class="form-group">
             <label class="form-label">Target Customer ID</label>
-            <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+            <input type="number" name="customer_id" placeholder="e.g. 1001"
+                  value="{{ customer.customer_id if customer else '' }}" required>
           </div>
           <button type="submit" class="btn form-submit-btn">
             Query Database Profile
           </button>
         </form>
+
+        <!-- CUSTOMER PROFILE CARD — shown only after a successful lookup -->
+        {% if customer %}
+        <div class="customer-profile-card">
+
+          <div class="customer-profile-header">
+            <div class="customer-profile-name">{{ customer.name }}</div>
+            <a href="/" style="font-size:11px; color:var(--text-muted); text-decoration:none;">
+              <i class="ti ti-x"></i> Close
+            </a>
+          </div>
+          <div class="customer-profile-id">ID: {{ customer.customer_id }}</div>
+
+          <div class="customer-profile-row" style="margin-top:8px;">
+            <i class="ti ti-mail"></i> {{ customer.email_id }}
+          </div>
+          <div class="customer-profile-row">
+            <i class="ti ti-phone"></i> {{ customer.mobile_number }}
+          </div>
+          <div class="customer-profile-row">
+            <i class="ti ti-cake"></i> {{ customer.date_of_birth }}
+          </div>
+
+          <hr class="divider">
+
+          <div class="customer-stats-grid">
+            <div class="customer-stat-box">
+              <div class="customer-stat-label">Currently Issued</div>
+              <div class="customer-stat-value cyan">{{ customer.books_currently_issued }}</div>
+            </div>
+            <div class="customer-stat-box">
+              <div class="customer-stat-label">Returned</div>
+              <div class="customer-stat-value green">{{ customer.books_returned }}</div>
+            </div>
+            <div class="customer-stat-box">
+              <div class="customer-stat-label">Overdue</div>
+              <div class="customer-stat-value red">{{ customer.books_overdue }}</div>
+            </div>
+            <div class="customer-stat-box">
+              <div class="customer-stat-label">Total Fine</div>
+              <div class="customer-stat-value amber">&#8377;{{ customer.total_fine_amount }}</div>
+            </div>
+          </div>
+
+          {% if customer.last_borrowed_book %}
+          <hr class="divider">
+          <div class="customer-profile-row" style="font-size:11px; color:var(--text-muted);">
+            <i class="ti ti-history"></i> Last borrowed:
+            <strong style="color:var(--text-secondary);">{{ customer.last_borrowed_book }}</strong>
+            (due {{ customer.last_due_date }})
+          </div>
+          {% endif %}
+
+        </div>
+        {% endif %}
       </div>
 
       <hr class="divider">

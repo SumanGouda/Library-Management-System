@@ -1,10 +1,12 @@
-from fastapi import APIRouter, status, Form
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, status, Form, Request
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from utils.db_helpers import get_customer_data, add_customer_data, delete_customer_data, update_customer_data, get_customer_count
-from utils.helper import is_adult
+from utils.helper import is_adult, base_context
 
 router = APIRouter(prefix="/customers", tags=["Customers"])
+templates = Jinja2Templates(directory="templates")
 
 
 # ── Pydantic models (kept for API/JSON use if needed later) ──
@@ -13,7 +15,7 @@ class CustomerSchema(BaseModel):
     name: str
     email_id: str = "N/A"
     mobile_number: int = 0
-    date_of_birth: str      # "YYYY-MM-DD"
+    date_of_birth: str      # ISO format: YYYY-MM-DD
 
 class CustomerUpdateSchema(BaseModel):
     email_id: str
@@ -56,16 +58,30 @@ async def register_customer(
 
 
 # ── Lookup customer via GET (used by HTML form) ──
-@router.get("/lookup")
-async def lookup_customer(customer_id: int):
+@router.get("/lookup", response_class=HTMLResponse)
+async def lookup_customer(request: Request, customer_id: int):
+    from app import get_stats   # import here to avoid circular import
+
     customer = get_customer_data(customer_id)
+
     if not customer:
         return RedirectResponse(
             url=f"/?error=Customer {customer_id} not found.",
             status_code=303
         )
-    return customer
 
+    total, available, on_loan, overdue = get_stats()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context=base_context(
+            request,
+            customer=customer,
+            total=total, available=available,
+            on_loan=on_loan, overdue=overdue
+        )
+    )
 
 # ── Update customer from HTML form ──
 @router.post("/update", status_code=status.HTTP_303_SEE_OTHER)

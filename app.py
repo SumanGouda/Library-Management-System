@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from routes.books import router as books_router
 from routes.loans import router as loans_router
 from routes.auth import router as auth_router
+from routes.customers import router as customers_router
 from starlette.middleware.sessions import SessionMiddleware 
 from utils.helper import is_valid_isbn, base_context, success_response, error_response
 from services.google_api import fetch_book_details_by_isbn
@@ -25,7 +26,8 @@ SESSION_SECRET = os.getenv("SESSION_SECRET_KEY")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
 app.include_router(books_router)
 app.include_router(loans_router)  
-app.include_router(auth_router)   
+app.include_router(auth_router)
+app.include_router(customers_router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── get stats helper ──

@@ -680,7 +680,30 @@ def verify_librarian_email(email):
         cursor.close()
         conn.close()
         
+def admin_email(database_path = DB_PATH, librarian_id = "LIB001") -> str: 
+
+    query = "SELECT email_id FROM auth_allowed_librarians WHERE librarian_id = ?;"
+    
+    try:
+        # Establish connection to your local library.db file
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
         
+        # Execute the query safely using a parameterized input to prevent SQL injection
+        cursor.execute(query, (librarian_id,))
+        result = cursor.fetchone()
+        
+        # Close connection loops
+        cursor.close()
+        conn.close()
+        
+        # Return the email if found, otherwise return a descriptive notice
+        if result:
+            return result[0]
+        return f"No librarian found with ID: {librarian_id}"
+        
+    except sqlite3.Error as e:
+        return f"Database error occurred: {e}"      
         
         
         

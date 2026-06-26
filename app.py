@@ -1,11 +1,12 @@
 import sqlite3
 from fastapi import FastAPI, Request, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse 
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from routes.books import router as books_router
 from routes.loans import router as loans_router
 from routes.auth import router as auth_router
+from routes.otp_verification import router as otp_router
 from routes.customers import router as customers_router
 from starlette.middleware.sessions import SessionMiddleware 
 from utils.helper import is_valid_isbn, base_context, success_response, error_response
@@ -28,6 +29,7 @@ app.include_router(books_router)
 app.include_router(loans_router)  
 app.include_router(auth_router)
 app.include_router(customers_router)
+app.include_router(otp_router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── get stats helper ──

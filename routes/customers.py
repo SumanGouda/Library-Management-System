@@ -22,39 +22,39 @@ class CustomerUpdateSchema(BaseModel):
     mobile_number: int
 
 
-# ── Register customer from HTML form ──
-@router.post("/", status_code=status.HTTP_303_SEE_OTHER)
-async def register_customer(
-    customer_id:   int = Form(...),
-    name:          str = Form(...),
-    email_id:      str = Form("N/A"),
-    mobile_number: int = Form(0),
-    date_of_birth: str = Form(...),
-):
-    if not is_adult(date_of_birth):
-        return RedirectResponse(
-            url="/?error=Registration denied. Customer must be 18 or older.",
-            status_code=303
-        )
+# # ── Register customer from HTML form ──
+# @router.post("/", status_code=status.HTTP_303_SEE_OTHER)
+# async def register_customer(
+#     customer_id:   int = Form(...),
+#     name:          str = Form(...),
+#     email_id:      str = Form("N/A"),
+#     mobile_number: int = Form(0),
+#     date_of_birth: str = Form(...),
+# ):
+#     if not is_adult(date_of_birth):
+#         return RedirectResponse(
+#             url="/?error=Registration denied. Customer must be 18 or older.",
+#             status_code=303
+#         )
 
-    success = add_customer_data(
-        customer_id=customer_id,
-        name=name,
-        email_id=email_id,
-        mobile_number=mobile_number,
-        date_of_birth=date_of_birth
-    )
+#     success = add_customer_data(
+#         customer_id=customer_id,
+#         name=name,
+#         email_id=email_id,
+#         mobile_number=mobile_number,
+#         date_of_birth=date_of_birth
+#     )
 
-    if not success:
-        return RedirectResponse(
-            url=f"/?error=A customer with ID {customer_id} already exists.",
-            status_code=303
-        )
+#     if not success:
+#         return RedirectResponse(
+#             url=f"/?error=A customer with ID {customer_id} already exists.",
+#             status_code=303
+#         )
 
-    return RedirectResponse(
-        url=f"/?success={name} registered successfully!",
-        status_code=303
-    )
+#     return RedirectResponse(
+#         url=f"/?success={name} registered successfully!",
+#         status_code=303
+#     )
 
 
 # ── Lookup customer via GET (used by HTML form) ──

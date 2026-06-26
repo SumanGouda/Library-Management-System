@@ -293,31 +293,73 @@
         <div class="section-subtitle">
           <i class="ti ti-user-plus"></i> Register Profile
         </div>
-        <form action="/customers/" method="POST" class="form-container">
+
+        <!-- This form no longer submits directly — it just collects data and triggers Send OTP -->
+        <form id="register-form" class="form-container" onsubmit="return false;">
           <div class="form-group">
             <label class="form-label">Full Name</label>
-            <input type="text" name="name" placeholder="Jane Doe" required>
+            <input type="text" id="reg-name" name="name" placeholder="Jane Doe" required>
           </div>
           <div class="form-group">
             <label class="form-label">Email ID</label>
-            <input type="email" name="email_id" placeholder="jane@example.com" required>
+            <input type="email" id="reg-email" name="email_id" placeholder="jane@example.com" required>
           </div>
           <div class="form-group">
             <label class="form-label">Mobile Number</label>
-            <input type="number" name="mobile_number" placeholder="9876543210" required>
+            <input type="number" id="reg-mobile" name="mobile_number" placeholder="9876543210" required>
           </div>
           <div class="form-group">
             <label class="form-label">Customer ID</label>
-            <input type="number" name="customer_id" placeholder="e.g. 1001" required>
+            <input type="number" id="reg-customer-id" name="customer_id" placeholder="e.g. 1001" required>
           </div>
           <div class="form-group">
             <label class="form-label">Date of Birth</label>
-            <input type="date" name="date_of_birth" required>
+            <input type="date" id="reg-dob" name="date_of_birth" required>
           </div>
-          <button type="submit" class="btn btn-primary form-submit-btn">
-            Create Profile Record
+
+          <!-- "Send OTP" button — hidden once OTP box appears -->
+          <button type="button" id="send-otp-btn" class="btn btn-primary form-submit-btn" onclick="sendOtp()">
+            <i class="ti ti-send"></i> Send OTP
           </button>
         </form>
+
+        <!-- ── INLINE OTP VERIFICATION BOX — hidden by default, appears below the form ── -->
+        <div id="otp-inline-box" style="display:none; margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+            <i class="ti ti-shield-check" style="color:var(--cyan-bright); font-size:18px;"></i>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:var(--text-primary);">Verify Customer</div>
+              <div style="font-size:11px; color:var(--text-secondary);">
+                OTP sent to email. Enter the code below.
+              </div>
+            </div>
+          </div>
+
+          <form action="/customers/verify-otp" method="POST" class="form-container">
+            <!-- Hidden fields carry over all the registration data -->
+            <input type="hidden" name="name" id="hidden-name">
+            <input type="hidden" name="email_id" id="hidden-email">
+            <input type="hidden" name="mobile_number" id="hidden-mobile">
+            <input type="hidden" name="customer_id" id="hidden-customer-id">
+            <input type="hidden" name="date_of_birth" id="hidden-dob">
+
+            <div class="form-group">
+              <label class="form-label">Email OTP</label>
+              <input type="text" name="email_otp" placeholder="6-digit code" maxlength="6" required>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:8px;">
+              <button type="submit" class="btn btn-primary form-submit-btn" style="flex:1; justify-content:center;">
+                <i class="ti ti-check"></i> Verify OTP
+              </button>
+              <button type="button" class="btn form-submit-btn" style="flex:1; justify-content:center;" onclick="cancelOtp()">
+                <i class="ti ti-x"></i> Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+
       </div>
 
       <hr class="divider">
@@ -464,6 +506,69 @@
 
   updateClock();
   setInterval(updateClock, 1000);
+</script>
+
+<!-- ── OTP — inline (no overlay/blur), appears just below the Register form ── -->
+<script>
+  function sendOtp() {
+    const form = document.getElementById("register-form");
+    if (!form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
+    const name       = document.getElementById("reg-name").value;
+    const email      = document.getElementById("reg-email").value;
+    const mobile     = document.getElementById("reg-mobile").value;
+    const customerId = document.getElementById("reg-customer-id").value;
+    const dob        = document.getElementById("reg-dob").value;
+
+    const sendBtn = document.getElementById("send-otp-btn");
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="ti ti-loader-2"></i> Sending OTP...';
+
+    fetch("/customers/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        name: name,
+        email_id: email,
+        mobile_number: mobile,
+        customer_id: customerId,
+        date_of_birth: dob
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="ti ti-send"></i> Send OTP';
+
+      if (data.status === "success") {
+        // Fill hidden fields in the inline OTP box
+        document.getElementById("hidden-name").value = name;
+        document.getElementById("hidden-email").value = email;
+        document.getElementById("hidden-mobile").value = mobile;
+        document.getElementById("hidden-customer-id").value = customerId;
+        document.getElementById("hidden-dob").value = dob;
+
+        // Hide "Send OTP" button, reveal the inline OTP verification box
+        sendBtn.style.display = "none";
+        document.getElementById("otp-inline-box").style.display = "block";
+      } else {
+        alert(data.message || "Failed to send OTP.");
+      }
+    })
+    .catch(() => {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = '<i class="ti ti-send"></i> Send OTP';
+      alert("Could not reach server.");
+    });
+  }
+
+  function cancelOtp() {
+    document.getElementById("otp-inline-box").style.display = "none";
+    document.getElementById("send-otp-btn").style.display = "inline-flex";
+  }
 </script>
 
 {% if not session or not session.get('librarian_email') %}
